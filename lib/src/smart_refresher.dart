@@ -247,7 +247,7 @@ class SmartRefresher extends StatefulWidget {
         child = null,
         scrollController = null,
         scrollDirection = null,
-        physics = null,
+        physics = BouncingScrollPhysics(),
         reverse = null,
         semanticChildCount = null,
         dragStartBehavior = null,
