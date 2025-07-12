@@ -219,7 +219,7 @@ class SmartRefresher extends StatefulWidget {
       this.cacheExtent,
       this.semanticChildCount,
       this.reverse,
-      this.physics,
+      this.physics = const BouncingScrollPhysics(),
       this.scrollDirection,
       this.scrollController})
       : builder = null,
