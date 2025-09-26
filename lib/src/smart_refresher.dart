@@ -275,6 +275,7 @@ class SmartRefresherState extends State<SmartRefresher> {
   bool _updatePhysics = false;
   double viewportExtent = 0;
   bool _canDrag = true;
+  bool _isDisposed = false;
 
   final RefreshIndicator defaultHeader =
       defaultTargetPlatform == TargetPlatform.iOS
@@ -475,6 +476,10 @@ class SmartRefresherState extends State<SmartRefresher> {
     if (_canDrag == canDrag) {
       return;
     }
+    if (!mounted || _isDisposed) {
+      _canDrag = canDrag;
+      return;
+    }
     setState(() {
       _canDrag = canDrag;
     });
@@ -504,6 +509,8 @@ class SmartRefresherState extends State<SmartRefresher> {
   @override
   void initState() {
     // TODO: implement initState
+    _isDisposed = false;
+    _canDrag = true;
     if (widget.controller.initialRefresh) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         //  if mounted,it avoid one situation: when init done,then dispose the widget before build.
@@ -518,6 +525,7 @@ class SmartRefresherState extends State<SmartRefresher> {
   @override
   void dispose() {
     // TODO: implement dispose
+    _isDisposed = true;
     widget.controller._detachPosition();
     super.dispose();
   }
@@ -613,8 +621,9 @@ class RefreshController {
   }
 
   void _detachPosition() {
-    _refresherState = null;
     position?.isScrollingNotifier.removeListener(_listenScrollEnd);
+    position = null;
+    _refresherState = null;
   }
 
   StatefulElement? _findIndicator(BuildContext context, Type elementType) {
@@ -663,23 +672,24 @@ class RefreshController {
       _refresherState!.setCanDrag(false);
     if (needMove) {
       return Future.delayed(const Duration(milliseconds: 50)).then((_) async {
-        // - 0.0001 is for NestedScrollView.
-        await position
-            ?.animateTo(position!.minScrollExtent - 0.0001,
-                duration: duration, curve: curve)
-            .then((_) {
+        try {
+          // - 0.0001 is for NestedScrollView.
+          await position?.animateTo(position!.minScrollExtent - 0.0001,
+              duration: duration, curve: curve);
+        } finally {
           if (_refresherState != null && _refresherState!.mounted) {
             _refresherState!.setCanDrag(true);
             if (needCallback) {
               headerMode!.value = RefreshStatus.refreshing;
             } else {
               headerMode!.setValueWithNoNotify(RefreshStatus.refreshing);
-              if (indicatorElement.state.mounted)
+              if (indicatorElement.state.mounted) {
                 (indicatorElement.state as RefreshIndicatorState)
                     .setState(() {});
+              }
             }
           }
-        });
+        }
       });
     } else {
       Future.value().then((_) {
@@ -720,21 +730,22 @@ class RefreshController {
       _refresherState!.setCanDrag(false);
     if (needMove) {
       return Future.delayed(const Duration(milliseconds: 50)).then((_) async {
-        await position
-            ?.animateTo(position!.maxScrollExtent,
-                duration: duration, curve: curve)
-            .then((_) {
+        try {
+          await position?.animateTo(position!.maxScrollExtent,
+              duration: duration, curve: curve);
+        } finally {
           if (_refresherState != null && _refresherState!.mounted) {
             _refresherState!.setCanDrag(true);
             if (needCallback) {
               footerMode!.value = LoadStatus.loading;
             } else {
               footerMode!.setValueWithNoNotify(LoadStatus.loading);
-              if (indicatorElement.state.mounted)
+              if (indicatorElement.state.mounted) {
                 (indicatorElement.state as LoadIndicatorState).setState(() {});
+              }
             }
           }
-        });
+        }
       });
     } else {
       return Future.value().then((_) {
